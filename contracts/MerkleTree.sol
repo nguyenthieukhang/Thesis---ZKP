@@ -1,22 +1,22 @@
 pragma solidity ^0.8.19;
 
 contract MerkleTree {
-    uint8 levels;
-
-    uint8 constant ROOT_HISTORY_SIZE = 100;
-    uint256[] public roots;
+    uint8 levels = 16;
+    // So that when the user generate the proof,
+    // and there are some other deposit, the user's root is still valid
+    uint8 constant ROOT_HISTORY_SIZE = 32;
+    bytes32 constant zero_value = keccak256(abi.encodePacked("Phu ZKP va Khang Tornado"));
+    bytes32[] public roots;
     uint256 public current_root = 0;
 
-    uint256[] public filled_subtrees;
-    uint256[] public zeros;
+    bytes32[] public filled_subtrees;
+    bytes32[] public zeros;
 
     uint32 public next_index = 0;
 
-    event LeafAdded(uint256 leaf, uint32 leaf_index);
+    event LeafAdded(bytes32 leaf, uint32 leaf_index);
 
-    constructor(uint8 tree_levels, uint256 zero_value) public {
-        levels = tree_levels;
-
+    constructor() {
         zeros.push(zero_value);
         filled_subtrees.push(zeros[0]);
 
@@ -25,26 +25,25 @@ contract MerkleTree {
             filled_subtrees.push(zeros[i]);
         }
 
-        roots = new uint256[](ROOT_HISTORY_SIZE);
+        roots = new bytes32[](ROOT_HISTORY_SIZE);
         roots[0] = HashLeftRight(zeros[levels - 1], zeros[levels - 1]);
     }
 
     function HashLeftRight(
-        uint256 left,
-        uint256 right
-    ) public pure returns (uint256 hashed) {
-        bytes32 hash = keccak256(abi.encodePacked(left, right));
-        return uint256(hash);
+        bytes32 left,
+        bytes32 right
+    ) public pure returns (bytes32 hashed) {
+        return keccak256(abi.encodePacked(left, right));
     }
 
-    function insert(uint256 leaf) internal {
+    function insert(bytes32 leaf) internal {
         uint32 leaf_index = next_index;
         uint32 current_index = next_index;
         next_index += 1;
 
-        uint256 current_level_hash = leaf;
-        uint256 left;
-        uint256 right;
+        bytes32 current_level_hash = leaf;
+        bytes32 left;
+        bytes32 right;
 
         for (uint8 i = 0; i < levels; i++) {
             if (current_index % 2 == 0) {
@@ -68,7 +67,7 @@ contract MerkleTree {
         emit LeafAdded(leaf, leaf_index);
     }
 
-    function isKnownRoot(uint _root) internal view returns (bool) {
+    function isKnownRoot(bytes32 _root) internal view returns (bool) {
         if (_root == 0) {
             return false;
         }
@@ -80,7 +79,7 @@ contract MerkleTree {
         return false;
     }
 
-    function getLastRoot() public view returns (uint256) {
+    function getLastRoot() public view returns (bytes32) {
         return roots[current_root];
     }
 }

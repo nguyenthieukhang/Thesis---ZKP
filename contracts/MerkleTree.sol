@@ -1,7 +1,7 @@
 pragma solidity ^0.8.19;
 
 contract MerkleTree {
-    uint8 levels = 16;
+    uint8 constant LEVELS = 16;
     // So that when the user generate the proof,
     // and there are some other deposit, the user's root is still valid
     uint8 constant ROOT_HISTORY_SIZE = 32;
@@ -20,13 +20,13 @@ contract MerkleTree {
         zeros.push(zero_value);
         filled_subtrees.push(zeros[0]);
 
-        for (uint8 i = 1; i < levels; i++) {
+        for (uint8 i = 1; i < LEVELS; i++) {
             zeros.push(HashLeftRight(zeros[i - 1], zeros[i - 1]));
             filled_subtrees.push(zeros[i]);
         }
 
         roots = new bytes32[](ROOT_HISTORY_SIZE);
-        roots[0] = HashLeftRight(zeros[levels - 1], zeros[levels - 1]);
+        roots[0] = HashLeftRight(zeros[LEVELS - 1], zeros[LEVELS - 1]);
     }
 
     function HashLeftRight(
@@ -45,7 +45,7 @@ contract MerkleTree {
         bytes32 left;
         bytes32 right;
 
-        for (uint8 i = 0; i < levels; i++) {
+        for (uint8 i = 0; i < LEVELS; i++) {
             if (current_index % 2 == 0) {
                 left = current_level_hash;
                 right = zeros[i];

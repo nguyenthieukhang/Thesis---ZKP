@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "chai": "^4.3.7"
+    "chai": "^4.3.7",
+    "circomlib": "git+https://github.com/iden3/circomlib.git"
   }
 }

@@ -1,6 +1,5 @@
 pragma circom 2.0.0;
 
-include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/pedersen.circom";
 include "merkleTree.circom";
 
@@ -29,10 +28,10 @@ template CommitmentHasher() {
 template Withdraw(levels) {
     signal input root;
     signal input nullifierHash;
-    signal private input nullifier;
-    signal private input secret;
-    signal private input pathElements[levels];
-    signal private input pathIndices[levels];
+    signal input nullifier;
+    signal input secret;
+    signal input pathElements[levels];
+    signal input pathIndices[levels];
 
     component hasher = CommitmentHasher();
     hasher.nullifier <== nullifier;

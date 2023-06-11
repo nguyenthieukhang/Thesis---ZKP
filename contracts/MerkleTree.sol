@@ -1,6 +1,8 @@
 pragma solidity ^0.8.19;
 
-contract MerkleTree {
+import "./MiMC.sol";
+
+contract MerkleTree is MiMC {
     uint8 constant LEVELS = 16;
     // So that when the user generate the proof,
     // and there are some other deposit, the user's root is still valid
@@ -21,19 +23,26 @@ contract MerkleTree {
         filled_subtrees.push(zeros[0]);
 
         for (uint8 i = 1; i < LEVELS; i++) {
-            zeros.push(HashLeftRight(zeros[i - 1], zeros[i - 1]));
+            zeros.push(hashLeftRight(zeros[i - 1], zeros[i - 1]));
             filled_subtrees.push(zeros[i]);
         }
 
         roots = new bytes32[](ROOT_HISTORY_SIZE);
-        roots[0] = HashLeftRight(zeros[LEVELS - 1], zeros[LEVELS - 1]);
+        roots[0] = hashLeftRight(zeros[LEVELS - 1], zeros[LEVELS - 1]);
     }
 
-    function HashLeftRight(
-        bytes32 left,
-        bytes32 right
-    ) public pure returns (bytes32 hashed) {
-        return keccak256(abi.encodePacked(left, right));
+    function hashLeftRight(
+        bytes32 _left,
+        bytes32 _right
+    ) public pure returns (bytes32) {
+        require(uint256(_left) < FIELD_SIZE, "_left should be inside the field");
+        require(uint256(_right) < FIELD_SIZE, "_right should be inside the field");
+        uint256 R = uint256(_left);
+        uint256 C = 0;
+        (R, C) = MiMCSponge(R, C);
+        R = addmod(R, uint256(_right), FIELD_SIZE);
+        (R, C) = MiMCSponge(R, C);
+        return bytes32(R);
     }
 
     function insert(bytes32 leaf) internal {
@@ -56,7 +65,7 @@ contract MerkleTree {
                 right = current_level_hash;
             }
 
-            current_level_hash = HashLeftRight(left, right);
+            current_level_hash = hashLeftRight(left, right);
 
             current_index /= 2;
         }

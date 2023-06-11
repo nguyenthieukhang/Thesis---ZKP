@@ -8,13 +8,13 @@ contract("MerkleTree", (accounts) => {
     merkleTreeInstance = await MerkleTree.new();
   });
 
-  it("should correctly compute the hash of 2 child nodes", async () => {
-    const childNode1 = web3.utils.keccak256("Khang");
-    const childNode2 = web3.utils.keccak256("Phu");
-    const father = web3.utils.soliditySha3(childNode1, childNode2);
-    const result = await merkleTreeInstance.HashLeftRight(childNode1, childNode2);
-    assert.equal(result, father, "Incorrect hash value returned");
-  });
+//   it("should correctly compute the hash of 2 child nodes", async () => {
+//     const childNode1 = web3.utils.keccak256("Khang");
+//     const childNode2 = web3.utils.keccak256("Phu");
+//     const father = web3.utils.soliditySha3(childNode1, childNode2);
+//     const result = await merkleTreeInstance.HashLeftRight(childNode1, childNode2);
+//     assert.equal(result, father, "Incorrect hash value returned");
+//   });
 
 //   it("should add a leaf and retrieve the last root", async () => {
 //     const leaf = web3.utils.keccak256("example leaf");

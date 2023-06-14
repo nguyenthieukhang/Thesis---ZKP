@@ -7,19 +7,18 @@ abstract contract IVerifier {
 }
 
 contract Mixer is MerkleTree {
-    uint256 public transferValue;
+    uint256 public constant transferValue = 0.00000001;
     mapping(uint256 => bool) public nullifiers;
     IVerifier verifier;
 
-    event Deposit(address from, bytes32 commitment);
+    event Deposit(address from, uint256 commitment);
     event Withdraw(address to, uint256 nullifier);
 
     constructor(address _verifier) MerkleTree() {
         verifier = IVerifier(_verifier);
-        transferValue = 0.001;
     }
 
-    function deposit(bytes32 commitment) public payable {
+    function deposit(uint256 commitment) public payable {
         require(
             msg.value == transferValue,
             "Please send `transferValue` ETH along with transaction"
@@ -28,7 +27,7 @@ contract Mixer is MerkleTree {
         emit Deposit(msg.sender, commitment);
     }
 
-    function withdraw(bytes memory proof, bytes32 root, uint256 nullifier, address payable receiver) public {
+    function withdraw(bytes memory proof, uint256 root, uint256 nullifier, address payable receiver) public {
         require(!nullifiers[nullifier], "The note has been already spent");
         require(isKnownRoot(root), "Cannot find your merkle root"); // Make sure to use a recent one
         require(verifier.verifyProof(proof), "Invalid withdraw proof");

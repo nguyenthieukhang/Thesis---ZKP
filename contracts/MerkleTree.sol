@@ -7,16 +7,16 @@ contract MerkleTree is MiMC {
     // So that when the user generate the proof,
     // and there are some other deposit, the user's root is still valid
     uint8 constant ROOT_HISTORY_SIZE = 32;
-    bytes32 constant zero_value = keccak256(abi.encodePacked("Phu ZKP va Khang Tornado"));
-    bytes32[] public roots;
+    uint256 constant zero_value = uint256(keccak256(abi.encodePacked("Phu ZKP va Khang Tornado")));
+    uint256[] public roots;
     uint256 public current_root = 0;
 
-    bytes32[] public filled_subtrees;
-    bytes32[] public zeros;
+    uint256[] public filled_subtrees;
+    uint256[] public zeros;
 
     uint32 public next_index = 0;
 
-    event LeafAdded(bytes32 leaf, uint32 leaf_index);
+    event LeafAdded(uint256 leaf, uint32 leaf_index);
 
     constructor() {
         zeros.push(zero_value);
@@ -27,32 +27,32 @@ contract MerkleTree is MiMC {
             filled_subtrees.push(zeros[i]);
         }
 
-        roots = new bytes32[](ROOT_HISTORY_SIZE);
+        roots = new uint256[](ROOT_HISTORY_SIZE);
         roots[0] = hashLeftRight(zeros[LEVELS - 1], zeros[LEVELS - 1]);
     }
 
     function hashLeftRight(
-        bytes32 _left,
-        bytes32 _right
-    ) public pure returns (bytes32) {
-        require(uint256(_left) < FIELD_SIZE, "_left should be inside the field");
-        require(uint256(_right) < FIELD_SIZE, "_right should be inside the field");
-        uint256 R = uint256(_left);
+        uint256 _left,
+        uint256 _right
+    ) public pure returns (uint256) {
+        require(_left < FIELD_SIZE, "_left should be inside the field");
+        require(_right < FIELD_SIZE, "_right should be inside the field");
+        uint256 R = _left;
         uint256 C = 0;
         (R, C) = MiMCSponge(R, C);
-        R = addmod(R, uint256(_right), FIELD_SIZE);
+        R = addmod(R, _right, FIELD_SIZE);
         (R, C) = MiMCSponge(R, C);
-        return bytes32(R);
+        return R;
     }
 
-    function insert(bytes32 leaf) internal {
+    function insert(uint256 leaf) internal {
         uint32 leaf_index = next_index;
         uint32 current_index = next_index;
         next_index += 1;
 
-        bytes32 current_level_hash = leaf;
-        bytes32 left;
-        bytes32 right;
+        uint256 current_level_hash = leaf;
+        uint256 left;
+        uint256 right;
 
         for (uint8 i = 0; i < LEVELS; i++) {
             if (current_index % 2 == 0) {
@@ -76,11 +76,11 @@ contract MerkleTree is MiMC {
         emit LeafAdded(leaf, leaf_index);
     }
 
-    function isKnownRoot(bytes32 _root) internal view returns (bool) {
+    function isKnownRoot(uint256 _root) internal view returns (bool) {
         if (_root == 0) {
             return false;
         }
-        for (uint256 i = 0; i < ROOT_HISTORY_SIZE; i++) {
+        for (uint8 i = 0; i < ROOT_HISTORY_SIZE; i++) {
             if (_root == roots[i]) {
                 return true;
             }
@@ -88,7 +88,7 @@ contract MerkleTree is MiMC {
         return false;
     }
 
-    function getLastRoot() public view returns (bytes32) {
+    function getLastRoot() public view returns (uint256) {
         return roots[current_root];
     }
 }

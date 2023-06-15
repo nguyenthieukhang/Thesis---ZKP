@@ -26,8 +26,8 @@ template CommitmentHasher() {
 }
 
 template Withdraw(levels) {
-    signal input root;
-    signal input nullifierHash;
+    signal public input root;
+    signal public input nullifierHash;
     signal input nullifier;
     signal input secret;
     signal input pathElements[levels];

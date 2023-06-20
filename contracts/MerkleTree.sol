@@ -1,12 +1,15 @@
 pragma solidity ^0.8.19;
 
-import "./MiMC.sol";
+interface IHasher {
+  function MiMCSponge(uint256 in_xL, uint256 in_xR, uint256 k) external pure returns (uint256 xL, uint256 xR);
+}
 
-contract MerkleTree is MiMC {
+contract MerkleTree {
     uint8 constant LEVELS = 16;
+    uint256 constant FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     // So that when the user generate the proof,
     // and there are some other deposit, the user's root is still valid
-    uint8 constant ROOT_HISTORY_SIZE = 32;
+    uint8 constant ROOT_HISTORY_SIZE = 16;
     uint256 constant zero_value = uint256(keccak256(abi.encodePacked("Phu ZKP va Khang Tornado")));
     uint256[] public roots;
     uint256 public current_root = 0;
@@ -15,10 +18,12 @@ contract MerkleTree is MiMC {
     uint256[] public zeros;
 
     uint32 public next_index = 0;
+    IHasher public immutable hasher;
 
     event LeafAdded(uint256 leaf, uint32 leaf_index);
 
-    constructor() {
+    constructor(address _hasher) {
+        hasher = IHasher(_hasher);
         zeros.push(zero_value);
         filled_subtrees.push(zeros[0]);
 
@@ -34,14 +39,14 @@ contract MerkleTree is MiMC {
     function hashLeftRight(
         uint256 _left,
         uint256 _right
-    ) public pure returns (uint256) {
+    ) public view returns (uint256) {
         require(_left < FIELD_SIZE, "_left should be inside the field");
         require(_right < FIELD_SIZE, "_right should be inside the field");
         uint256 R = _left;
         uint256 C = 0;
-        (R, C) = MiMCSponge(R, C);
+        (R, C) = hasher.MiMCSponge(R, C, 0);
         R = addmod(R, _right, FIELD_SIZE);
-        (R, C) = MiMCSponge(R, C);
+        (R, C) = hasher.MiMCSponge(R, C, 0);
         return R;
     }
 

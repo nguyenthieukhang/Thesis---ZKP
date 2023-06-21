@@ -14,7 +14,7 @@ const BUFFER_SIZE = 32
 const MERKLE_TREE_HEIGHT = 32
 const ETH_AMOUNT = 1e-8
 const MIXER_ADDRESS = '0x99c4ED8dCd48b2a9bC9f9112A384ae15fd13F54b'
-let circuit, proving_key, senderAccount, contractJson
+let circuit, proving_key, senderAccount, contractJson, web3
 let PRIVATE_KEY
 let pedersen = buildPedersenHash()
 let babyJub = buildBabyJub()
@@ -36,7 +36,8 @@ async function createDeposit({ nullifier, secret }) {
 }
 
 async function printETHBalance({ address, name }) {
-    console.log(`${name} ETH balance is`, web3.utils.fromWei(await web3.eth.getBalance(address)))
+    console.log(`Getting balance from address ${address} with name ${name}...`)
+    console.log(`${name} ETH balance is`, await web3.eth.getBalance(address))
 }
 
 async function deposit() {
@@ -145,6 +146,7 @@ async function init(rpc) {
 }
 
 async function main() {
+    console.log(`Random big integer is ${rBigInt()}`)
     program
       .option('-r, --rpc <URL>', 'The RPC, CLI should interact with', 'http://localhost:8545')
     program

@@ -4,6 +4,7 @@
     "circomlib": "github:iden3/circomlib",
     "circomlibjs": "^0.1.7",
     "commander": "^10.0.1",
+    "dotenv": "^16.3.1",
     "fixed-merkle-tree": "^0.7.3",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",

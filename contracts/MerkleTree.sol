@@ -5,7 +5,7 @@ interface IHasher {
 }
 
 contract MerkleTree {
-    uint8 constant LEVELS = 16;
+    uint8 constant LEVELS = 32;
     uint256 constant FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     // So that when the user generate the proof,
     // and there are some other deposit, the user's root is still valid

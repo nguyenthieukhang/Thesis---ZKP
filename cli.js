@@ -1,16 +1,23 @@
-const program = require('commander')
+const { Command } = require('commander');
+require('dotenv').config();
+const program = new Command();
 const snarkjs = require('snarkjs')
 const crypto = require('crypto')
 const circomlib = require('circomlib')
-const Web3 = require('web3')
+const circomlibjs = require('circomlibjs')
+const { Web3 } = require('web3')
 const merkleTree = require('fixed-merkle-tree')
+const buildPedersenHash = circomlibjs.buildPedersenHash
+const buildBabyJub = circomlibjs.buildBabyjub
 
 const BUFFER_SIZE = 32
-const MERKLE_TREE_HEIGHT = 16
+const MERKLE_TREE_HEIGHT = 32
 const ETH_AMOUNT = 1e-8
-const MIXER_ADDRESS = '[Enter the address after deployment here]'
+const MIXER_ADDRESS = '0x99c4ED8dCd48b2a9bC9f9112A384ae15fd13F54b'
 let circuit, proving_key, senderAccount, contractJson
 let PRIVATE_KEY
+let pedersen = buildPedersenHash()
+let babyJub = buildBabyJub()
 
 const buff2Int = buff => BigInt('0x' + buff.toString('hex'))
 
@@ -18,13 +25,13 @@ const int2Buff = bigint => Buffer.from(bigint.toString(16).padStart(64, '0'), 'h
 
 const rBigInt = () => buff2Int(crypto.randomBytes(BUFFER_SIZE))
 
-const pedersenHash = data => circomlib.babyJub.unpackPoint(circomlib.pedersenHash.hash(data))[0]
+const pedersenHash = async data => (await babyJub).unpackPoint((await pedersen).hash(data))[0]
 
-function createDeposit({ nullifier, secret }) {
+async function createDeposit({ nullifier, secret }) {
     const deposit = { nullifier, secret }
     deposit.preimage = Buffer.concat([int2Buff(deposit.nullifier), int2Buff(deposit.secret)])
-    deposit.commitment = pedersenHash(deposit.preimage)
-    deposit.nullifierHash = pedersenHash(int2Buff(deposit.nullifier))
+    deposit.commitment = await pedersenHash(deposit.preimage)
+    deposit.nullifierHash = await pedersenHash(int2Buff(deposit.nullifier))
     return deposit
 }
 
@@ -33,7 +40,7 @@ async function printETHBalance({ address, name }) {
 }
 
 async function deposit() {
-    const deposit = createDeposit({ nullifier: rBigInt(), secret: rBigInt() })
+    const deposit = await createDeposit({ nullifier: rBigInt(), secret: rBigInt() })
     const note = deposit.preimage.toString('hex')
     const noteString = `Khang-and-Phu-${note}`
     console.log(`Your note: ${noteString}`)
@@ -121,6 +128,7 @@ async function deposit() {
 // }
 
 async function init(rpc) {
+    console.log(`The RPC URL is ${rpc}`)
     web3 = new Web3(rpc)
     contractJson = require('./build/contracts/Mixer.json')
     PRIVATE_KEY = process.env.PRIVATE_KEY
@@ -143,7 +151,7 @@ async function main() {
       .command('deposit')
       .description('Submit a 0.00000001 ETH deposit to the mixer and retrieve a note which can be used to get back the money later')
       .action(async () => {
-        await init(program.rpc)
+        await init(program.opts().rpc)
         noteString = await deposit()
         console.log(`Here is your note, please keep it safe so that you can withdraw later:\n${noteString}`)
       })
@@ -151,7 +159,7 @@ async function main() {
       .command('balance <address>')
       .description('Check ETH balance')
       .action(async (address) => {
-        await init({ rpc: program.rpc })
+        await init(program.opts().rpc)
         await printETHBalance({ address, name: '' })
       })
     // program
@@ -162,6 +170,7 @@ async function main() {
     //     await init({ rpc: program.rpc })
     //     await withdraw({ deposit, recipient })
     //   })
+    program.parse(process.argv)
 }
 
 main()

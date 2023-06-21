@@ -146,7 +146,6 @@ async function init(rpc) {
 }
 
 async function main() {
-    console.log(`Random big integer is ${rBigInt()}`)
     program
       .option('-r, --rpc <URL>', 'The RPC, CLI should interact with', 'http://localhost:8545')
     program

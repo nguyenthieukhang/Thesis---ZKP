@@ -21,6 +21,8 @@ let babyJub = buildBabyJub()
 
 const buff2Int = buff => BigInt('0x' + buff.toString('hex'))
 
+const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex'))
+
 const int2Buff = bigint => Buffer.from(bigint.toString(16).padStart(64, '0'), 'hex');
 
 const rBigInt = () => buff2Int(crypto.randomBytes(BUFFER_SIZE))
@@ -48,7 +50,8 @@ async function deposit() {
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     console.log('Submitting deposit transaction')
-    await tornado.methods.deposit(deposit.commitment.toString('hex')).send({ value: ETH_AMOUNT, from: senderAccount })
+    console.log(`The deposit commitment is ${Arr2Int(deposit.commitment)} and the type is ${typeof Arr2Int(deposit.commitment)}`)
+    await tornado.methods.deposit(Arr2Int(deposit.commitment)).send({ value: ETH_AMOUNT, from: senderAccount })
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     return noteString

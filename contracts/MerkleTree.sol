@@ -10,7 +10,7 @@ contract MerkleTree {
     // So that when the user generate the proof,
     // and there are some other deposit, the user's root is still valid
     uint8 constant ROOT_HISTORY_SIZE = 16;
-    uint256 constant zero_value = uint256(keccak256(abi.encodePacked("Phu ZKP va Khang Tornado")));
+    uint256 constant zero_value = uint256(keccak256(abi.encodePacked("Phu ZKP va Khang Tornado"))) % FIELD_SIZE;
     uint256[] public roots;
     uint256 public current_root = 0;
 
@@ -51,6 +51,7 @@ contract MerkleTree {
     }
 
     function insert(uint256 leaf) internal {
+        require(leaf < FIELD_SIZE, "leaf should be inside the field");
         uint32 leaf_index = next_index;
         uint32 current_index = next_index;
         next_index += 1;

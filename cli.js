@@ -10,10 +10,11 @@ const merkleTree = require('fixed-merkle-tree')
 const buildPedersenHash = circomlibjs.buildPedersenHash
 const buildBabyJub = circomlibjs.buildBabyjub
 
-const BUFFER_SIZE = 32
+const BUFFER_SIZE = 31
 const MERKLE_TREE_HEIGHT = 32
 const ETH_AMOUNT = 1
-const MIXER_ADDRESS = '0xd53868CDc1Ccc346b1908B24bcd03F33C158Cee0'
+const MIXER_ADDRESS = '0xf98Df50E52a29ba023C320c49Be354d0c0C9906a'
+const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
 let circuit, proving_key, senderAccount, contractJson, web3
 let PRIVATE_KEY
 let pedersen = buildPedersenHash()
@@ -21,9 +22,9 @@ let babyJub = buildBabyJub()
 
 const buff2Int = buff => BigInt('0x' + buff.toString('hex'))
 
-const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex'))
+const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex')) % FIELD_SIZE
 
-const int2Buff = bigint => Buffer.from(bigint.toString(16).padStart(64, '0'), 'hex');
+const int2Buff = bigint => Buffer.from(bigint.toString(16), 'hex');
 
 const rBigInt = () => buff2Int(crypto.randomBytes(BUFFER_SIZE))
 
@@ -51,7 +52,7 @@ async function deposit() {
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     console.log('Submitting deposit transaction')
     console.log(`The deposit commitment is ${Arr2Int(deposit.commitment)} and the type is ${typeof Arr2Int(deposit.commitment)}`)
-    await tornado.methods.deposit(Arr2Int(deposit.commitment)).send({ value: ETH_AMOUNT, from: senderAccount })
+    await tornado.methods.deposit(Arr2Int(deposit.commitment)).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     return noteString

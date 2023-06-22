@@ -12,8 +12,8 @@ const buildBabyJub = circomlibjs.buildBabyjub
 
 const BUFFER_SIZE = 32
 const MERKLE_TREE_HEIGHT = 32
-const ETH_AMOUNT = 1e-8
-const MIXER_ADDRESS = '0x99c4ED8dCd48b2a9bC9f9112A384ae15fd13F54b'
+const ETH_AMOUNT = 1
+const MIXER_ADDRESS = '0xd53868CDc1Ccc346b1908B24bcd03F33C158Cee0'
 let circuit, proving_key, senderAccount, contractJson, web3
 let PRIVATE_KEY
 let pedersen = buildPedersenHash()

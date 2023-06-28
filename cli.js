@@ -13,7 +13,7 @@ const buildBabyJub = circomlibjs.buildBabyjub
 const BUFFER_SIZE = 31
 const MERKLE_TREE_HEIGHT = 32
 const ETH_AMOUNT = 1
-const MIXER_ADDRESS = '0xf98Df50E52a29ba023C320c49Be354d0c0C9906a'
+const MIXER_ADDRESS = '0xCCAB9Cd7A6c90906a4a6EEb704c7c5b6dd602a01'
 const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
 let circuit, proving_key, senderAccount, contractJson, web3
 let PRIVATE_KEY
@@ -35,6 +35,9 @@ async function createDeposit({ nullifier, secret }) {
     deposit.preimage = Buffer.concat([int2Buff(deposit.nullifier), int2Buff(deposit.secret)])
     deposit.commitment = await pedersenHash(deposit.preimage)
     deposit.nullifierHash = await pedersenHash(int2Buff(deposit.nullifier))
+    if(BigInt('0x' + Buffer.from(deposit.commitment).toString('hex')) >= FIELD_SIZE) {
+      console.log(`Warning! This is a strange number ${BigInt('0x' + Buffer.from(deposit.commitment).toString('hex'))}`)
+    }
     return deposit
 }
 
@@ -45,7 +48,7 @@ async function printETHBalance({ address, name }) {
 
 async function deposit() {
     const deposit = await createDeposit({ nullifier: rBigInt(), secret: rBigInt() })
-    const note = deposit.preimage.toString('hex')
+    const note = '0x' + deposit.preimage.toString('hex').padStart(64, '0')
     const noteString = `Khang-and-Phu-${note}`
     console.log(`Your note: ${noteString}`)
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
@@ -56,6 +59,24 @@ async function deposit() {
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     return noteString
+}
+
+async function parseNote(noteString) {
+    const noteRegex = /Khang-and-Phu-0x(?<note>[0-9a-fA-F]{124})/g
+    const match = noteRegex.exec(noteString)
+    if (!match) {
+      throw new Error('The note has invalid format')
+    }
+
+    const buff = Buffer.from(match.groups.note, 'hex')
+    const nullifier = buff2Int(buff.subarray(0, 31))
+    const secret = buff2Int(buff.subarray(31, 62))
+    const deposit = await createDeposit({ nullifier, secret })
+
+    // const note = '0x' + deposit.preimage.toString('hex').padStart(64, '0')
+    // const noteString_ = `Khang-and-Phu-${note}`
+    // console.log(`The created parsed is ${noteString_}`)
+    return deposit
 }
 
 // async function generateMerkleProof(deposit) {
@@ -119,18 +140,18 @@ async function deposit() {
 //     return { proof, args }
 // }
 
-// async function withdraw({ deposit, recipient }) {
-//     const { proof, args } = await generateProof({ deposit, recipient })
+async function withdraw({ deposit, recipient }) {
+    // const { proof, args } = await generateProof({ deposit, recipient })
 
-//     console.log('Submitting withdraw transaction')
-//     await tornado.methods.withdraw(proof, ...args).send({ from: senderAccount })
-//     .on('transactionHash', function (txHash) {
-//         console.log(`The transaction hash is ${txHash}`)
-//     }).on('error', function (e) {
-//         console.error('on transactionHash error', e.message)
-//     })
-//     console.log('Done')
-// }
+    // console.log('Submitting withdraw transaction')
+    // await tornado.methods.withdraw(proof, ...args).send({ from: senderAccount })
+    // .on('transactionHash', function (txHash) {
+    //     console.log(`The transaction hash is ${txHash}`)
+    // }).on('error', function (e) {
+    //     console.error('on transactionHash error', e.message)
+    // })
+    // console.log('Done')
+}
 
 async function init(rpc) {
     console.log(`The RPC URL is ${rpc}`)
@@ -167,14 +188,14 @@ async function main() {
         await init(program.opts().rpc)
         await printETHBalance({ address, name: '' })
       })
-    // program
-    //   .command('withdraw <note> <recipient>')
-    //   .description('Withdraw a note to a recipient account')
-    //   .action(async (noteString, recipient) => {
-    //     const { deposit } = parseNote(noteString)
-    //     await init({ rpc: program.rpc })
-    //     await withdraw({ deposit, recipient })
-    //   })
+    program
+      .command('withdraw <note> <recipient>')
+      .description('Withdraw a note to a recipient account')
+      .action(async (noteString, recipient) => {
+        const deposit = parseNote(noteString)
+        await init({ rpc: program.rpc })
+        await withdraw({ deposit, recipient })
+      })
     program.parse(process.argv)
 }
 

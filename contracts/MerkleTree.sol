@@ -10,7 +10,7 @@ contract MerkleTree {
     // So that when the user generate the proof,
     // and there are some other deposit, the user's root is still valid
     uint8 constant ROOT_HISTORY_SIZE = 16;
-    uint256 constant zero_value = uint256(keccak256(abi.encodePacked("Phu ZKP va Khang Tornado"))) % FIELD_SIZE;
+    uint256 public constant zero_value = 0;
     uint256[] public roots;
     uint256 public current_root = 0;
 
@@ -82,7 +82,7 @@ contract MerkleTree {
         emit LeafAdded(leaf, leaf_index);
     }
 
-    function isKnownRoot(uint256 _root) internal view returns (bool) {
+    function isKnownRoot(uint256 _root) public view returns (bool) {
         if (_root == 0) {
             return false;
         }

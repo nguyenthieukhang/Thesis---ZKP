@@ -45,4 +45,8 @@ contract Mixer is MerkleTree {
         payable(receiver).transfer(transferValue);
         emit Withdraw(receiver, nullifier);
     }
+
+    function isSpent(uint256 _nullifier) public view returns (bool) {
+        return nullifiers[_nullifier];
+    }
 }

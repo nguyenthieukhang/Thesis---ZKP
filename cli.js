@@ -16,8 +16,8 @@ const buildMimcSponge = circomlibjs.buildMimcSponge
 const BUFFER_SIZE = 31
 const MERKLE_TREE_HEIGHT = 32
 const ETH_AMOUNT = 1
-const MIXER_ADDRESS = '0xaD5228d3ba6aa994546cD738c270ca93aea9daB2'
-const HASHER_ADDRESS = '0xF7C87e6e8cd704e32073A531e0c7B347E74403BB'
+const MIXER_ADDRESS = '0x707e104e96b68C052271c84eBA79B7DfFc665B9d'
+const HASHER_ADDRESS = '0x008738D6aBE2ac2B974446a683D6f8cA8092cCa4'
 const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
 const zero_value = BigInt(0);
 let circuit, proving_key, senderAccount, contractJson, web3, tornado, hasherJson, hasher
@@ -30,7 +30,14 @@ const buff2Int = buff => BigInt('0x' + buff.toString('hex'))
 
 const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex')) % FIELD_SIZE
 
-const int2Buff = bigint => Buffer.from(bigint.toString(16), 'hex');
+const Arr2Int2 = arr => BigInt('0x' + Buffer.from(arr).toString('hex'))
+
+// const int2Buff = bigint => Buffer.from(bigint.toString(16), 'hex');
+
+function int2Buff(bigInt, bufferSize = 31) {
+  const hexString = bigInt.toString(16).padStart(bufferSize * 2, "0");
+  return Buffer.from(hexString, "hex");
+}
 
 const rBigInt = () => buff2Int(crypto.randomBytes(BUFFER_SIZE))
 
@@ -52,6 +59,8 @@ async function createDeposit({ nullifier, secret }) {
     const deposit = { nullifier, secret }
     deposit.preimage = Buffer.concat([int2Buff(deposit.nullifier), int2Buff(deposit.secret)])
     deposit.commitment = await pedersenHash(deposit.preimage)
+    buff = int2Buff(deposit.nullifier)
+    console.log(`The size of nullifier is ${buff.length*8}`)
     deposit.nullifierHash = await pedersenHash(int2Buff(deposit.nullifier))
     if(BigInt('0x' + Buffer.from(deposit.commitment).toString('hex')) >= FIELD_SIZE) {
       console.log(`Warning! This is a strange number ${BigInt('0x' + Buffer.from(deposit.commitment).toString('hex'))}`)
@@ -122,8 +131,8 @@ async function generateMerkleProof(deposit) {
     // Find current commitment in the tree
     console.log(`The value we are looking for is ${Arr2Int(deposit.commitment)}`)
     console.log(`All events are ${events}`)
-    const depositEvent = events.find(e => e.returnValues.commitment === Arr2Int(deposit.commitment))
-    const leafIndex = depositEvent ? depositEvent.returnValues.leaf_index : -1
+    const depositEvent = events.find(e => e.returnValues.leaf === Arr2Int(deposit.commitment))
+    const leafIndex = depositEvent ? Number(depositEvent.returnValues.leaf_index) : -1
 
     // Validate that our data is correct
     const root = tree.root
@@ -152,32 +161,52 @@ async function generateMerkleProof(deposit) {
 
     // Compute merkle proof of our commitment
     const { pathElements, pathIndices } = tree.path(leafIndex)
-    return { pathElements, pathIndices, root: BigInt(tree.root()) }
+    return { pathElements, pathIndices, root: BigInt(tree.root) }
   }
 
 async function generateProof({ deposit, recipient }) {
     // Compute merkle proof of our commitment
     const { root, pathElements, pathIndices } = await generateMerkleProof(deposit)
 
+    function reverseBuffer(buffer) {
+      const reversedBuffer = Buffer.from(buffer);
+      //console.log(`Before reverse ${buffer.toJSON().data}`);
+      reversedBuffer.reverse();
+      //console.log(`After reverse ${reversedBuffer.toJSON().data}`)
+      return reversedBuffer;
+    }
+
+    console.log(`The sdafsF ${deposit.nullifier}`)
+
     // // Prepare circuit input
-    // const input = {
-    //   // Public snark inputs
-    //   root: root,
-    //   nullifierHash: deposit.nullifierHash,
-    //   recipient: bigInt(recipient),
+    const input = {
+      // Public snark inputs
+      root: root,
+      nullifierHash: Arr2Int(deposit.nullifierHash),
 
-    //   // Private snark inputs
-    //   nullifier: deposit.nullifier,
-    //   secret: deposit.secret,
-    //   pathElements: pathElements,
-    //   pathIndices: pathIndices,
-    // }
+      // Private snark inputs
+      nullifier: Arr2Int2(reverseBuffer(int2Buff(deposit.nullifier))),
+      secret: Arr2Int2(reverseBuffer(int2Buff(deposit.secret))),
+      pathElements: pathElements,
+      pathIndices: pathIndices,
+    }
 
-    // console.log('Generating SNARK proof')
-    // console.time('Proof time')
-    // const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
-    // const { proof } = websnarkUtils.toSolidityInput(proofData)
-    // console.timeEnd('Proof time')
+    console.log('Generating SNARK proof')
+    console.time('Proof time')
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_0000.zkey");
+    console.timeEnd('Proof time')
+    console.log("Proof: ");
+    console.log(JSON.stringify(proof, null, 1));
+
+    const vKey = JSON.parse(fs.readFileSync("./circuits/verification_key.json"));
+
+    const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
+
+    if (res === true) {
+        console.log("Verification OK");
+    } else {
+        console.log("Invalid proof");
+    }
 
     // const args = [
     //   BigInt(input.root),

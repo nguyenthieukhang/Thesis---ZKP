@@ -1,14 +1,20 @@
 const { Command } = require('commander');
 require('dotenv').config();
+const fs = require("fs")
 const assert = require('assert');
 const program = new Command();
 const snarkjs = require('snarkjs')
 const crypto = require('crypto')
-const circomlib = require('circomlib')
 const circomlibjs = require('circomlibjs')
 const { Web3 } = require('web3')
 const merkleTree = require('fixed-merkle-tree')
-const ethers = require('ethers');
+const ffjavascript = require("ffjavascript");
+const stringifyBigInts = ffjavascript.utils.stringifyBigInts;
+const F = new ffjavascript.ZqField(
+  ffjavascript.Scalar.fromString(
+    "21888242871839275222246405745257275088548364400416034343698204186575808495617"
+  )
+);
 const buildPedersenHash = circomlibjs.buildPedersenHash
 const buildBabyJub = circomlibjs.buildBabyjub
 const buildMimcSponge = circomlibjs.buildMimcSponge
@@ -16,8 +22,8 @@ const buildMimcSponge = circomlibjs.buildMimcSponge
 const BUFFER_SIZE = 31
 const MERKLE_TREE_HEIGHT = 32
 const ETH_AMOUNT = 1
-const MIXER_ADDRESS = '0x707e104e96b68C052271c84eBA79B7DfFc665B9d'
-const HASHER_ADDRESS = '0x008738D6aBE2ac2B974446a683D6f8cA8092cCa4'
+const MIXER_ADDRESS = '0xAD77130B7cBa64bb4C83b8Be93fd360345F540D0'
+const HASHER_ADDRESS = '0x58163043910705E15d99e522e6D4E3773c3a9a3B'
 const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
 const zero_value = BigInt(0);
 let circuit, proving_key, senderAccount, contractJson, web3, tornado, hasherJson, hasher
@@ -28,7 +34,7 @@ let mimcSponge
 
 const buff2Int = buff => BigInt('0x' + buff.toString('hex'))
 
-const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex')) % FIELD_SIZE
+// const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex')) % FIELD_SIZE
 
 const Arr2Int2 = arr => BigInt('0x' + Buffer.from(arr).toString('hex'))
 
@@ -41,7 +47,9 @@ function int2Buff(bigInt, bufferSize = 31) {
 
 const rBigInt = () => buff2Int(crypto.randomBytes(BUFFER_SIZE))
 
-const pedersenHash = async data => (await babyJub).unpackPoint((await pedersen).hash(data))[0]
+async function pedersenHash(data) {
+  return F.fromRprLEM((await babyJub).unpackPoint((await pedersen).hash(data))[0])
+}
 
 function hashLeftRight(left, right) {
   let C = BigInt(0);
@@ -61,9 +69,10 @@ async function createDeposit({ nullifier, secret }) {
     deposit.commitment = await pedersenHash(deposit.preimage)
     buff = int2Buff(deposit.nullifier)
     console.log(`The size of nullifier is ${buff.length*8}`)
+    console.log(`The commitment is ${deposit.commitment}`)
     deposit.nullifierHash = await pedersenHash(int2Buff(deposit.nullifier))
-    if(BigInt('0x' + Buffer.from(deposit.commitment).toString('hex')) >= FIELD_SIZE) {
-      console.log(`Warning! This is a strange number ${BigInt('0x' + Buffer.from(deposit.commitment).toString('hex'))}`)
+    if(deposit.commitment >= FIELD_SIZE) {
+      console.log(`Warning! This is a strange number ${deposit.commitment}`)
     }
     return deposit
 }
@@ -81,8 +90,8 @@ async function deposit() {
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     console.log('Submitting deposit transaction')
-    console.log(`The deposit commitment is ${Arr2Int(deposit.commitment)} and the type is ${typeof Arr2Int(deposit.commitment)}`)
-    await tornado.methods.deposit(Arr2Int(deposit.commitment)).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
+    console.log(`The deposit commitment is ${deposit.commitment} and the type is ${typeof deposit.commitment}`)
+    await tornado.methods.deposit(deposit.commitment).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     return noteString
@@ -129,9 +138,9 @@ async function generateMerkleProof(deposit) {
     });
 
     // Find current commitment in the tree
-    console.log(`The value we are looking for is ${Arr2Int(deposit.commitment)}`)
+    console.log(`The value we are looking for is ${deposit.commitment}`)
     console.log(`All events are ${events}`)
-    const depositEvent = events.find(e => e.returnValues.leaf === Arr2Int(deposit.commitment))
+    const depositEvent = events.find(e => e.returnValues.leaf === deposit.commitment)
     const leafIndex = depositEvent ? Number(depositEvent.returnValues.leaf_index) : -1
 
     // Validate that our data is correct
@@ -154,7 +163,7 @@ async function generateMerkleProof(deposit) {
     console.log(`The mimcSponge hash of client is ${mimcSponge.F.toString(resJs.xL)}`)
     console.log(`The mimcSponge hash of contract is ${BigInt(resContract.xL)}`)
     const isValidRoot = await tornado.methods.isKnownRoot(BigInt(root)).call()
-    const isSpent = await tornado.methods.isSpent(Arr2Int(deposit.nullifierHash)).call()
+    const isSpent = await tornado.methods.isSpent(deposit.nullifierHash).call()
     assert(isValidRoot === true, 'Merkle tree is corrupted')
     assert(isSpent === false, 'The note is already spent')
     assert(leafIndex >= 0, 'The deposit is not found in the tree')
@@ -182,7 +191,7 @@ async function generateProof({ deposit, recipient }) {
     const input = {
       // Public snark inputs
       root: root,
-      nullifierHash: Arr2Int(deposit.nullifierHash),
+      nullifierHash: deposit.nullifierHash,
 
       // Private snark inputs
       nullifier: Arr2Int2(reverseBuffer(int2Buff(deposit.nullifier))),

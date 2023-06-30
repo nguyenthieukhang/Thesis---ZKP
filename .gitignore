@@ -1,9 +1,3 @@
 node_modules
-#circuits/WithDraw_js
-#circuits/WithDraw_cpp
 circuits/pot12_*
-build
-# circuits/WithDraw_*
-# circuits/WithDraw.r1cs
-# circuits/WithDraw.sym
-# circuits/verification_key.json
+build/

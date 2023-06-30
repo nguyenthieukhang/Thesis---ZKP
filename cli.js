@@ -1,15 +1,14 @@
-const { Command } = require('commander');
-require('dotenv').config();
+const { Command } = require('commander')
+require('dotenv').config()
 const fs = require("fs")
-const assert = require('assert');
-const program = new Command();
+const assert = require('assert')
+const program = new Command()
 const snarkjs = require('snarkjs')
 const crypto = require('crypto')
 const circomlibjs = require('circomlibjs')
 const { Web3 } = require('web3')
 const merkleTree = require('fixed-merkle-tree')
-const ffjavascript = require("ffjavascript");
-const stringifyBigInts = ffjavascript.utils.stringifyBigInts;
+const ffjavascript = require("ffjavascript")
 const F = new ffjavascript.ZqField(
   ffjavascript.Scalar.fromString(
     "21888242871839275222246405745257275088548364400416034343698204186575808495617"
@@ -19,14 +18,13 @@ const buildPedersenHash = circomlibjs.buildPedersenHash
 const buildBabyJub = circomlibjs.buildBabyjub
 const buildMimcSponge = circomlibjs.buildMimcSponge
 
-const BUFFER_SIZE = 31
-const MERKLE_TREE_HEIGHT = 32
+const BUFFER_SIZE = 31 // Compatible with the circuits
+const MERKLE_TREE_HEIGHT = 32 // Compatible with the circuits and contracts
 const ETH_AMOUNT = 1
-const MIXER_ADDRESS = '0xAD77130B7cBa64bb4C83b8Be93fd360345F540D0'
-const HASHER_ADDRESS = '0x58163043910705E15d99e522e6D4E3773c3a9a3B'
+const MIXER_ADDRESS = '0x7D012f678FD0F732fDefD4e7dB092244235e1c03'
 const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
 const zero_value = BigInt(0);
-let circuit, proving_key, senderAccount, contractJson, web3, tornado, hasherJson, hasher
+let senderAccount, contractJson, web3, tornado
 let PRIVATE_KEY
 let pedersen = buildPedersenHash()
 let babyJub = buildBabyJub()
@@ -34,11 +32,7 @@ let mimcSponge
 
 const buff2Int = buff => BigInt('0x' + buff.toString('hex'))
 
-// const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex')) % FIELD_SIZE
-
-const Arr2Int2 = arr => BigInt('0x' + Buffer.from(arr).toString('hex'))
-
-// const int2Buff = bigint => Buffer.from(bigint.toString(16), 'hex');
+const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex'))
 
 function int2Buff(bigInt, bufferSize = 31) {
   const hexString = bigInt.toString(16).padStart(bufferSize * 2, "0");
@@ -139,29 +133,17 @@ async function generateMerkleProof(deposit) {
 
     // Find current commitment in the tree
     console.log(`The value we are looking for is ${deposit.commitment}`)
-    console.log(`All events are ${events}`)
     const depositEvent = events.find(e => e.returnValues.leaf === deposit.commitment)
     const leafIndex = depositEvent ? Number(depositEvent.returnValues.leaf_index) : -1
 
     // Validate that our data is correct
     const root = tree.root
-    console.log(`The root is ${BigInt(await root)}`)
     try {
       const lastRoot = await tornado.methods.getLastRoot().call();
       console.log('Last Root:', lastRoot.toString());
     } catch (error) {
       console.error('Error retrieving last root:', error);
     }
-    console.log(`The current client zero is ${zero_value}`)
-    console.log(`The zero value of the contract is ${BigInt(await tornado.methods.zero_value().call())}`)
-    let l = 12
-    let r = 18789
-    console.log(`The hash of l and r for client is ${hashLeftRight(l, r)}`)
-    console.log(`The hash of l and r for contract is ${BigInt(await tornado.methods.hashLeftRight(l, r).call())}`)
-    const resContract = await hasher.methods.MiMCSponge(l, r, 0).call()
-    const resJs = mimcSponge.hash(l, r, 0)
-    console.log(`The mimcSponge hash of client is ${mimcSponge.F.toString(resJs.xL)}`)
-    console.log(`The mimcSponge hash of contract is ${BigInt(resContract.xL)}`)
     const isValidRoot = await tornado.methods.isKnownRoot(BigInt(root)).call()
     const isSpent = await tornado.methods.isSpent(deposit.nullifierHash).call()
     assert(isValidRoot === true, 'Merkle tree is corrupted')
@@ -179,23 +161,18 @@ async function generateProof({ deposit, recipient }) {
 
     function reverseBuffer(buffer) {
       const reversedBuffer = Buffer.from(buffer);
-      //console.log(`Before reverse ${buffer.toJSON().data}`);
       reversedBuffer.reverse();
-      //console.log(`After reverse ${reversedBuffer.toJSON().data}`)
       return reversedBuffer;
     }
-
-    console.log(`The sdafsF ${deposit.nullifier}`)
-
-    // // Prepare circuit input
+    // Prepare circuit input
     const input = {
       // Public snark inputs
       root: root,
       nullifierHash: deposit.nullifierHash,
 
       // Private snark inputs
-      nullifier: Arr2Int2(reverseBuffer(int2Buff(deposit.nullifier))),
-      secret: Arr2Int2(reverseBuffer(int2Buff(deposit.secret))),
+      nullifier: Arr2Int(reverseBuffer(int2Buff(deposit.nullifier))),
+      secret: Arr2Int(reverseBuffer(int2Buff(deposit.secret))),
       pathElements: pathElements,
       pathIndices: pathIndices,
     }
@@ -214,7 +191,7 @@ async function generateProof({ deposit, recipient }) {
     const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
 
     if (res === true) {
-        console.log("Verification OK");
+        console.log("Offline verification OK");
     } else {
         console.log("Invalid proof");
     }
@@ -234,7 +211,7 @@ async function withdraw({ deposit, recipient }) {
     const { proofArr, args } = await generateProof({ deposit, recipient })
 
     console.log('Submitting withdraw transaction')
-    await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 3e7 })
+    await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 1e9 })
     .on('transactionHash', function (txHash) {
         console.log(`The transaction hash is ${txHash}`)
     }).on('error', function (e) {
@@ -247,7 +224,6 @@ async function init(rpc) {
     console.log(`The RPC URL is ${rpc}`)
     web3 = new Web3(rpc)
     contractJson = require('./build/contracts/Mixer.json')
-    hasherJson = require('./build/contracts/Hasher.json')
     PRIVATE_KEY = process.env.PRIVATE_KEY
     console.log(`The private key found is ${PRIVATE_KEY}`)
     if (PRIVATE_KEY) {
@@ -259,7 +235,6 @@ async function init(rpc) {
         console.log('Warning! PRIVATE_KEY not found. Please provide PRIVATE_KEY in .env file if you deposit')
     }
     tornado = new web3.eth.Contract(contractJson.abi, MIXER_ADDRESS)
-    hasher = new web3.eth.Contract(hasherJson.abi, HASHER_ADDRESS)
     mimcSponge = await buildMimcSponge()
 }
 

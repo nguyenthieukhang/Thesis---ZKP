@@ -202,10 +202,12 @@ async function generateProof({ deposit, recipient }) {
 
     console.log('Generating SNARK proof')
     console.time('Proof time')
-    const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_0000.zkey");
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_0001.zkey");
     console.timeEnd('Proof time')
     console.log("Proof: ");
     console.log(JSON.stringify(proof, null, 1));
+    console.log('Public signals:')
+    console.log(JSON.stringify(publicSignals, null, 1));
 
     const vKey = JSON.parse(fs.readFileSync("./circuits/verification_key.json"));
 
@@ -217,26 +219,28 @@ async function generateProof({ deposit, recipient }) {
         console.log("Invalid proof");
     }
 
-    // const args = [
-    //   BigInt(input.root),
-    //   BigInt(input.nullifierHash),
-    //   BigInt(input.recipient)
-    // ]
+    const args = [
+      BigInt(input.root),
+      BigInt(input.nullifierHash),
+      recipient
+    ]
 
-    // return { proof, args }
+    proofArr = [proof.pi_a[0], proof.pi_a[1], proof.pi_b[0][0], proof.pi_b[0][1], proof.pi_b[1][0], proof.pi_b[1][1], proof.pi_c[0], proof.pi_c[1], publicSignals[0], publicSignals[1]]
+
+    return { proofArr, args }
 }
 
 async function withdraw({ deposit, recipient }) {
-    const { proof, args } = await generateProof({ deposit, recipient })
+    const { proofArr, args } = await generateProof({ deposit, recipient })
 
-    // console.log('Submitting withdraw transaction')
-    // await tornado.methods.withdraw(proof, ...args).send({ from: senderAccount })
-    // .on('transactionHash', function (txHash) {
-    //     console.log(`The transaction hash is ${txHash}`)
-    // }).on('error', function (e) {
-    //     console.error('on transactionHash error', e.message)
-    // })
-    // console.log('Done')
+    console.log('Submitting withdraw transaction')
+    await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 3e7 })
+    .on('transactionHash', function (txHash) {
+        console.log(`The transaction hash is ${txHash}`)
+    }).on('error', function (e) {
+        console.error('on transactionHash error', e.message)
+    })
+    console.log('Done')
 }
 
 async function init(rpc) {

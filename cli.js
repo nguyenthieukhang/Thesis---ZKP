@@ -21,7 +21,7 @@ const buildMimcSponge = circomlibjs.buildMimcSponge
 const BUFFER_SIZE = 31 // Compatible with the circuits
 const MERKLE_TREE_HEIGHT = 32 // Compatible with the circuits and contracts
 const ETH_AMOUNT = 1
-const MIXER_ADDRESS = '0x7D012f678FD0F732fDefD4e7dB092244235e1c03'
+const MIXER_ADDRESS = '0x4Ac4aEF9dcB8cfcA114CD79269E49a28F70b2919'
 const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
 const zero_value = BigInt(0);
 let senderAccount, contractJson, web3, tornado
@@ -202,16 +202,15 @@ async function generateProof({ deposit, recipient }) {
       recipient
     ]
 
-    proofArr = [proof.pi_a[0], proof.pi_a[1], proof.pi_b[0][0], proof.pi_b[0][1], proof.pi_b[1][0], proof.pi_b[1][1], proof.pi_c[0], proof.pi_c[1], publicSignals[0], publicSignals[1]]
+    proofArr = [proof.pi_a[0], proof.pi_a[1], proof.pi_b[0][1], proof.pi_b[0][0], proof.pi_b[1][1], proof.pi_b[1][0], proof.pi_c[0], proof.pi_c[1], publicSignals[0], publicSignals[1]]
 
     return { proofArr, args }
 }
 
 async function withdraw({ deposit, recipient }) {
     const { proofArr, args } = await generateProof({ deposit, recipient })
-
     console.log('Submitting withdraw transaction')
-    await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 1e9 })
+    await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 2e6 })
     .on('transactionHash', function (txHash) {
         console.log(`The transaction hash is ${txHash}`)
     }).on('error', function (e) {

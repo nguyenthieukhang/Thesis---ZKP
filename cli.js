@@ -9,9 +9,12 @@ const circomlibjs = require('circomlibjs')
 const { Web3 } = require('web3')
 const merkleTree = require('fixed-merkle-tree')
 const ffjavascript = require("ffjavascript")
+
+const FIELD_SIZE_STRING = "21888242871839275222246405745257275088548364400416034343698204186575808495617"
+
 const F = new ffjavascript.ZqField(
   ffjavascript.Scalar.fromString(
-    "21888242871839275222246405745257275088548364400416034343698204186575808495617"
+    FIELD_SIZE_STRING
   )
 );
 const buildPedersenHash = circomlibjs.buildPedersenHash
@@ -21,11 +24,10 @@ const buildMimcSponge = circomlibjs.buildMimcSponge
 const BUFFER_SIZE = 31 // Compatible with the circuits
 const MERKLE_TREE_HEIGHT = 32 // Compatible with the circuits and contracts
 const ETH_AMOUNT = 1
-const MIXER_ADDRESS = '0x4Ac4aEF9dcB8cfcA114CD79269E49a28F70b2919'
-const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
+const FIELD_SIZE = BigInt(FIELD_SIZE_STRING)
 const zero_value = BigInt(0);
 let senderAccount, contractJson, web3, tornado
-let PRIVATE_KEY
+let PRIVATE_KEY, MIXER_ADDRESS
 let pedersen = buildPedersenHash()
 let babyJub = buildBabyJub()
 let mimcSponge
@@ -34,7 +36,7 @@ const buff2Int = buff => BigInt('0x' + buff.toString('hex'))
 
 const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex'))
 
-function int2Buff(bigInt, bufferSize = 31) {
+function int2Buff(bigInt, bufferSize = BUFFER_SIZE) {
   const hexString = bigInt.toString(16).padStart(bufferSize * 2, "0");
   return Buffer.from(hexString, "hex");
 }
@@ -48,11 +50,11 @@ async function pedersenHash(data) {
 function hashLeftRight(left, right) {
   let C = BigInt(0);
   let R = BigInt(left);
-  res = mimcSponge.hash(R, C, BigInt(0));
+  res = mimcSponge.hash(R, C, zero_value);
   R = BigInt(mimcSponge.F.toString(res.xL))
   C = BigInt(mimcSponge.F.toString(res.xR))
   R = (R + BigInt(right)) % FIELD_SIZE
-  res = mimcSponge.hash(R, C, BigInt(0));
+  res = mimcSponge.hash(R, C, zero_value);
   R = BigInt(mimcSponge.F.toString(res.xL))
   return R
 }
@@ -62,12 +64,7 @@ async function createDeposit({ nullifier, secret }) {
     deposit.preimage = Buffer.concat([int2Buff(deposit.nullifier), int2Buff(deposit.secret)])
     deposit.commitment = await pedersenHash(deposit.preimage)
     buff = int2Buff(deposit.nullifier)
-    console.log(`The size of nullifier is ${buff.length*8}`)
-    console.log(`The commitment is ${deposit.commitment}`)
     deposit.nullifierHash = await pedersenHash(int2Buff(deposit.nullifier))
-    if(deposit.commitment >= FIELD_SIZE) {
-      console.log(`Warning! This is a strange number ${deposit.commitment}`)
-    }
     return deposit
 }
 
@@ -99,8 +96,8 @@ async function parseNote(noteString) {
     }
 
     const buff = Buffer.from(match.groups.note, 'hex')
-    const nullifier = buff2Int(buff.subarray(0, 31))
-    const secret = buff2Int(buff.subarray(31, 62))
+    const nullifier = buff2Int(buff.subarray(0, BUFFER_SIZE))
+    const secret = buff2Int(buff.subarray(BUFFER_SIZE, 2 * BUFFER_SIZE))
     const deposit = await createDeposit({ nullifier, secret })
 
     const note = '0x' + deposit.preimage.toString('hex').padStart(64, '0')
@@ -224,10 +221,11 @@ async function init(rpc) {
     web3 = new Web3(rpc)
     contractJson = require('./build/contracts/Mixer.json')
     PRIVATE_KEY = process.env.PRIVATE_KEY
+    MIXER_ADDRESS = process.env.MIXER_ADDRESS
     console.log(`The private key found is ${PRIVATE_KEY}`)
     if (PRIVATE_KEY) {
-        const account = web3.eth.accounts.privateKeyToAccount('0x' + PRIVATE_KEY)
-        web3.eth.accounts.wallet.add('0x' + PRIVATE_KEY)
+        const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY)
+        web3.eth.accounts.wallet.add(PRIVATE_KEY)
         web3.eth.defaultAccount = account.address
         senderAccount = account.address
     } else {

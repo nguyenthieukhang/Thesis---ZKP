@@ -27,14 +27,10 @@ contract Mixer is MerkleTree {
         emit Deposit(msg.sender, commitment);
     }
 
-    function withdraw(uint[10] memory proof, uint256 root, uint256 nullifier, address payable receiver) public {
+    function withdraw(uint[24] memory proof, uint[2] memory input, uint256 root, uint256 nullifier, address payable receiver) public {
         require(!nullifiers[nullifier], "The note has been already spent");
         require(isKnownRoot(root), "Cannot find your merkle root"); // Make sure to use a recent one
-        // uint[2] memory a = [proof[0], proof[1]];
-        // uint[2][2] memory b = [[proof[2], proof[3]], [proof[4], proof[5]]];
-        // uint[2] memory c = [proof[6], proof[7]];
-        // uint[2] memory input = [proof[8], proof[9]];
-        // require(verifier.verifyProof(a, b, c, input), "Invalid withdraw proof");
+        require(verifier.verifyProof(proof, input), "Invalid withdraw proof");
 
         nullifiers[nullifier] = true;
         payable(receiver).transfer(transferValue);

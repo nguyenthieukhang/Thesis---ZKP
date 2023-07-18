@@ -199,7 +199,23 @@ async function generateProof({ deposit, recipient }) {
       recipient
     ]
 
-    proofArr = [proof.pi_a[0], proof.pi_a[1], proof.pi_b[0][1], proof.pi_b[0][0], proof.pi_b[1][1], proof.pi_b[1][0], proof.pi_c[0], proof.pi_c[1], publicSignals[0], publicSignals[1]]
+    proofArr = [proof.A[0], proof.A[1],
+              proof.B[0], proof.B[1],
+              proof.C[0], proof.C[1],
+              proof.Z[0], proof.Z[1],
+              proof.T1[0], proof.T1[1],
+              proof.T2[0], proof.T2[1],
+              proof.T3[0], proof.T3[1],
+              proof.Wxi[0], proof.Wxi[1],
+              proof.Wxiw[0], proof.Wxiw[1],
+              proof.eval_a,
+              proof.eval_b,
+              proof.eval_c,
+              proof.eval_s1,
+              proof.eval_s2,
+              proof.eval_zw,
+              publicSignals[0],
+              publicSignals[1]]
 
     return { proofArr, args }
 }
@@ -207,7 +223,8 @@ async function generateProof({ deposit, recipient }) {
 async function withdraw({ deposit, recipient }) {
     const { proofArr, args } = await generateProof({ deposit, recipient })
     console.log('Submitting withdraw transaction')
-    await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 2e6 })
+    console.log(`The length of the proof is ${proofArr.length}`)
+    await tornado.methods.withdraw(proofArr.slice(0, 24), proofArr.slice(24, 26), ...args).send({ from: senderAccount, gas: 2e6 })
     .on('transactionHash', function (txHash) {
         console.log(`The transaction hash is ${txHash}`)
     }).on('error', function (e) {

@@ -176,7 +176,7 @@ async function generateProof({ deposit, recipient }) {
 
     console.log('Generating SNARK proof')
     console.time('Proof time')
-    const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_0001.zkey");
+    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_final.zkey");
     console.timeEnd('Proof time')
     console.log("Proof: ");
     console.log(JSON.stringify(proof, null, 1));
@@ -185,7 +185,7 @@ async function generateProof({ deposit, recipient }) {
 
     const vKey = JSON.parse(fs.readFileSync("./circuits/verification_key.json"));
 
-    const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
+    const res = await snarkjs.plonk.verify(vKey, publicSignals, proof);
 
     if (res === true) {
         console.log("Offline verification OK");

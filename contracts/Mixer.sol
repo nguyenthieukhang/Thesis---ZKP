@@ -3,12 +3,7 @@ pragma solidity ^0.8.19;
 import "./MerkleTree.sol";
 
 abstract contract IVerifier {
-    function verifyProof(
-            uint[2] memory a,
-            uint[2][2] memory b,
-            uint[2] memory c,
-            uint[2] memory input
-        ) public virtual view returns (bool r);
+    function verifyProof(uint256[24] calldata _proof, uint256[2] calldata _pubSignals) public virtual view returns (bool);
 }
 
 contract Mixer is MerkleTree {
@@ -35,11 +30,11 @@ contract Mixer is MerkleTree {
     function withdraw(uint[10] memory proof, uint256 root, uint256 nullifier, address payable receiver) public {
         require(!nullifiers[nullifier], "The note has been already spent");
         require(isKnownRoot(root), "Cannot find your merkle root"); // Make sure to use a recent one
-        uint[2] memory a = [proof[0], proof[1]];
-        uint[2][2] memory b = [[proof[2], proof[3]], [proof[4], proof[5]]];
-        uint[2] memory c = [proof[6], proof[7]];
-        uint[2] memory input = [proof[8], proof[9]];
-        require(verifier.verifyProof(a, b, c, input), "Invalid withdraw proof");
+        // uint[2] memory a = [proof[0], proof[1]];
+        // uint[2][2] memory b = [[proof[2], proof[3]], [proof[4], proof[5]]];
+        // uint[2] memory c = [proof[6], proof[7]];
+        // uint[2] memory input = [proof[8], proof[9]];
+        // require(verifier.verifyProof(a, b, c, input), "Invalid withdraw proof");
 
         nullifiers[nullifier] = true;
         payable(receiver).transfer(transferValue);

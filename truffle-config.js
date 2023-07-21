@@ -29,7 +29,7 @@ require("dotenv").config();
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
  MNEMONIC = process.env.MNEMONIC
- PROJECT_ID = process.env.RPC
+ INFURA_API_KEY = process.env.RPC
  /**
  * </Your>* Deployment with Truffle Dashboard (Recommended for best security practice)
  * --------------------------------------------------------------------------

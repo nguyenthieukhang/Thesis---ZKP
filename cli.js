@@ -80,6 +80,7 @@ async function deposit() {
     console.log(`Your note: ${noteString}`)
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
+    latestBlock = await web3.eth.getBlock("latest")
     console.log('Submitting deposit transaction')
     const transactionData = tornado.methods.deposit(deposit.commitment).encodeABI();
     const signedTransaction = await web3.eth.accounts.signTransaction(
@@ -88,15 +89,19 @@ async function deposit() {
         from: senderAccount,
         to: MIXER_ADDRESS,
         data: transactionData,
-        gas: 2e6,
-        gasPrice: await web3.eth.getGasPrice(),
+        gas: 2e7,
+        maxFeePerGas: BigInt(latestBlock.baseFeePerGas) * BigInt(2),
+        maxPriorityFeePerGas: 0
       },
       PRIVATE_KEY
     );
-    await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
+    web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
+    .on('transactionHash', (hash) => {
+      console.log('Transaction hash:', hash);
+    });
     // await tornado.methods.deposit(deposit.commitment).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
-    await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
-    await printETHBalance({ address: senderAccount, name: 'Sender account' })
+    // await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
+    // await printETHBalance({ address: senderAccount, name: 'Sender account' })
     return noteString
 }
 
@@ -219,20 +224,24 @@ async function generateProof({ deposit, recipient }) {
 async function withdraw({ deposit, recipient }) {
     const { proofArr, args } = await generateProof({ deposit, recipient })
     console.log('Submitting withdraw transaction')
+    latestBlock = await web3.eth.getBlock("latest")
     const transactionData = tornado.methods.withdraw(proofArr, ...args).encodeABI();
     const signedTransaction = await web3.eth.accounts.signTransaction(
       {
         from: senderAccount,
         to: MIXER_ADDRESS,
         data: transactionData,
-        gas: 2e6,
-        gasPrice: await web3.eth.getGasPrice(),
+        gas: 2e7,
+        maxFeePerGas: BigInt(latestBlock.baseFeePerGas) * BigInt(2),
+        maxPriorityFeePerGas: 0
       },
       PRIVATE_KEY
     );
-    await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
+    web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
+    .on('transactionHash', (hash) => {
+      console.log('Transaction hash:', hash);
+    });
     // await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 2e6 })
-    console.log('Done')
 }
 
 async function init() {

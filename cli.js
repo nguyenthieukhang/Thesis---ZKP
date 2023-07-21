@@ -81,7 +81,6 @@ async function deposit() {
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     console.log('Submitting deposit transaction')
-    console.log(`The deposit commitment is ${deposit.commitment} and the type is ${typeof deposit.commitment}`)
     const transactionData = tornado.methods.deposit(deposit.commitment).encodeABI();
     const signedTransaction = await web3.eth.accounts.signTransaction(
       {
@@ -150,7 +149,7 @@ async function generateMerkleProof(deposit) {
     const root = tree.root
     try {
       const lastRoot = await tornado.methods.getLastRoot().call();
-      console.log('Last Root:', lastRoot.toString());
+      // console.log('Last Root:', lastRoot.toString());
     } catch (error) {
       console.error('Error retrieving last root:', error);
     }
@@ -191,10 +190,10 @@ async function generateProof({ deposit, recipient }) {
     console.time('Proof time')
     const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_0001.zkey");
     console.timeEnd('Proof time')
-    console.log("Proof: ");
-    console.log(JSON.stringify(proof, null, 1));
-    console.log('Public signals:')
-    console.log(JSON.stringify(publicSignals, null, 1));
+    // console.log("Proof: ");
+    // console.log(JSON.stringify(proof, null, 1));
+    // console.log('Public signals:')
+    // console.log(JSON.stringify(publicSignals, null, 1));
 
     const vKey = JSON.parse(fs.readFileSync("./circuits/verification_key.json"));
 

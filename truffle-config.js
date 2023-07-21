@@ -70,7 +70,9 @@ module.exports = {
     sepolia: {
       provider: () => new HDWalletProvider(MNEMONIC, INFURA_API_KEY),
       network_id: "11155111",
-      gas: 4465030,
+      gas: 8000000,
+      networkCheckTimeout: 10000,
+      timeoutBlocks: 200
     },
     //
     // An additional network, but with some advanced options…

@@ -82,7 +82,20 @@ async function deposit() {
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     console.log('Submitting deposit transaction')
     console.log(`The deposit commitment is ${deposit.commitment} and the type is ${typeof deposit.commitment}`)
-    await tornado.methods.deposit(deposit.commitment).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
+    const transactionData = tornado.methods.deposit(deposit.commitment).encodeABI();
+    const signedTransaction = await web3.eth.accounts.signTransaction(
+      {
+        value: ETH_AMOUNT,
+        from: senderAccount,
+        to: MIXER_ADDRESS,
+        data: transactionData,
+        gas: 2e6,
+        gasPrice: await web3.eth.getGasPrice(),
+      },
+      PRIVATE_KEY
+    );
+    await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
+    // await tornado.methods.deposit(deposit.commitment).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     return noteString
@@ -207,12 +220,19 @@ async function generateProof({ deposit, recipient }) {
 async function withdraw({ deposit, recipient }) {
     const { proofArr, args } = await generateProof({ deposit, recipient })
     console.log('Submitting withdraw transaction')
-    await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 2e6 })
-    .on('transactionHash', function (txHash) {
-        console.log(`The transaction hash is ${txHash}`)
-    }).on('error', function (e) {
-        console.error('on transactionHash error', e.message)
-    })
+    const transactionData = tornado.methods.withdraw(proofArr, ...args).encodeABI();
+    const signedTransaction = await web3.eth.accounts.signTransaction(
+      {
+        from: senderAccount,
+        to: MIXER_ADDRESS,
+        data: transactionData,
+        gas: 2e6,
+        gasPrice: await web3.eth.getGasPrice(),
+      },
+      PRIVATE_KEY
+    );
+    await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
+    // await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 2e6 })
     console.log('Done')
 }
 

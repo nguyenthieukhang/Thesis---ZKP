@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@truffle/hdwallet-provider": "^2.1.13",
     "chai": "^4.3.7",
     "circomlib": "github:iden3/circomlib",
     "circomlibjs": "^0.1.7",

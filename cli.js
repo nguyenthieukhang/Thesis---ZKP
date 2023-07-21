@@ -216,12 +216,13 @@ async function withdraw({ deposit, recipient }) {
     console.log('Done')
 }
 
-async function init(rpc) {
-    console.log(`The RPC URL is ${rpc}`)
-    web3 = new Web3(rpc)
+async function init() {
     contractJson = require('./build/contracts/Mixer.json')
     PRIVATE_KEY = process.env.PRIVATE_KEY
     MIXER_ADDRESS = process.env.MIXER_ADDRESS
+    RPC = process.env.RPC
+    web3 = new Web3(RPC)
+    console.log(`The RPC URL is ${RPC}`)
     console.log(`The private key found is ${PRIVATE_KEY}`)
     if (PRIVATE_KEY) {
         const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY)
@@ -237,12 +238,10 @@ async function init(rpc) {
 
 async function main() {
     program
-      .option('-r, --rpc <URL>', 'The RPC, CLI should interact with', 'http://localhost:8545')
-    program
       .command('deposit')
       .description('Submit a 0.00000001 ETH deposit to the mixer and retrieve a note which can be used to get back the money later')
       .action(async () => {
-        await init(program.opts().rpc)
+        await init()
         noteString = await deposit()
         console.log(`Here is your note, please keep it safe so that you can withdraw later:\n${noteString}`)
       })
@@ -250,7 +249,7 @@ async function main() {
       .command('balance <address>')
       .description('Check ETH balance')
       .action(async (address) => {
-        await init(program.opts().rpc)
+        await init()
         await printETHBalance({ address, name: '' })
       })
     program
@@ -258,7 +257,7 @@ async function main() {
       .description('Withdraw a note to a recipient account')
       .action(async (noteString, recipient) => {
         const deposit = await parseNote(noteString)
-        await init(program.opts().rpc)
+        await init()
         await withdraw({ deposit, recipient })
       })
     program.parse(process.argv)

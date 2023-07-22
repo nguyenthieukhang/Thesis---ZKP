@@ -80,11 +80,53 @@ async function deposit() {
     console.log(`Your note: ${noteString}`)
     await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
+    latestBlock = await web3.eth.getBlock("latest")
     console.log('Submitting deposit transaction')
-    console.log(`The deposit commitment is ${deposit.commitment} and the type is ${typeof deposit.commitment}`)
-    await tornado.methods.deposit(deposit.commitment).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
-    await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
-    await printETHBalance({ address: senderAccount, name: 'Sender account' })
+    const transactionData = tornado.methods.deposit(deposit.commitment).encodeABI();
+    const signedTransaction = await web3.eth.accounts.signTransaction(
+      {
+        value: ETH_AMOUNT,
+        from: senderAccount,
+        to: MIXER_ADDRESS,
+        data: transactionData,
+        gas: 2e7,
+        maxFeePerGas: BigInt(latestBlock.baseFeePerGas) * BigInt(2),
+        maxPriorityFeePerGas: 0
+      },
+      PRIVATE_KEY
+    );
+    web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
+    .once('sending', function (payload) {
+      console.log('Transaction sending:', payload);
+    })
+    .once('sent', function (payload) {
+      console.log('Transaction sent:', payload);
+    })
+    .once('transactionHash', function (hash) {
+      console.log('Transaction hash:', hash);
+    })
+    .once('receipt', function (receipt) {
+      console.log('Transaction receipt:', receipt);
+    })
+    .on('confirmation', function (confNumber, receipt, latestBlockHash) {
+      console.log('Confirmation number:', confNumber);
+      console.log('Receipt:', receipt);
+      console.log('Latest block hash:', latestBlockHash);
+    })
+    .on('error', function (error) {
+      console.error('Error occurred:', error);
+    })
+    .then(function (receipt) {
+      console.log('Transaction receipt mined:', receipt);
+      // Any additional handling after the receipt is mined can be done here
+    })
+    .catch(function (error) {
+      console.error('Error occurred during transaction:', error);
+      // Handle the error if something went wrong with the transaction
+    });
+    // await tornado.methods.deposit(deposit.commitment).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
+    // await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
+    // await printETHBalance({ address: senderAccount, name: 'Sender account' })
     return noteString
 }
 
@@ -137,7 +179,7 @@ async function generateMerkleProof(deposit) {
     const root = tree.root
     try {
       const lastRoot = await tornado.methods.getLastRoot().call();
-      console.log('Last Root:', lastRoot.toString());
+      // console.log('Last Root:', lastRoot.toString());
     } catch (error) {
       console.error('Error retrieving last root:', error);
     }
@@ -178,10 +220,10 @@ async function generateProof({ deposit, recipient }) {
     console.time('Proof time')
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_final.zkey");
     console.timeEnd('Proof time')
-    console.log("Proof: ");
-    console.log(JSON.stringify(proof, null, 1));
-    console.log('Public signals:')
-    console.log(JSON.stringify(publicSignals, null, 1));
+    // console.log("Proof: ");
+    // console.log(JSON.stringify(proof, null, 1));
+    // console.log('Public signals:')
+    // console.log(JSON.stringify(publicSignals, null, 1));
 
     const vKey = JSON.parse(fs.readFileSync("./circuits/verification_key.json"));
 
@@ -223,22 +265,59 @@ async function generateProof({ deposit, recipient }) {
 async function withdraw({ deposit, recipient }) {
     const { proofArr, args } = await generateProof({ deposit, recipient })
     console.log('Submitting withdraw transaction')
-    console.log(`The length of the proof is ${proofArr.length}`)
-    await tornado.methods.withdraw(proofArr.slice(0, 24), proofArr.slice(24, 26), ...args).send({ from: senderAccount, gas: 2e6 })
-    .on('transactionHash', function (txHash) {
-        console.log(`The transaction hash is ${txHash}`)
-    }).on('error', function (e) {
-        console.error('on transactionHash error', e.message)
+    latestBlock = await web3.eth.getBlock("latest")
+    const transactionData = tornado.methods.withdraw(proofArr.slice(0, 24), proofArr.slice(24, 26), ...args).encodeABI();
+    const signedTransaction = await web3.eth.accounts.signTransaction(
+      {
+        from: senderAccount,
+        to: MIXER_ADDRESS,
+        data: transactionData,
+        gas: 2e7,
+        maxFeePerGas: BigInt(latestBlock.baseFeePerGas) * BigInt(2),
+        maxPriorityFeePerGas: 0
+      },
+      PRIVATE_KEY
+    );
+    web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
+    .once('sending', function (payload) {
+      console.log('Transaction sending:', payload);
     })
-    console.log('Done')
+    .once('sent', function (payload) {
+      console.log('Transaction sent:', payload);
+    })
+    .once('transactionHash', function (hash) {
+      console.log('Transaction hash:', hash);
+    })
+    .once('receipt', function (receipt) {
+      console.log('Transaction receipt:', receipt);
+    })
+    .on('confirmation', function (confNumber, receipt, latestBlockHash) {
+      console.log('Confirmation number:', confNumber);
+      console.log('Receipt:', receipt);
+      console.log('Latest block hash:', latestBlockHash);
+    })
+    .on('error', function (error) {
+      console.error('Error occurred:', error);
+    })
+    .then(function (receipt) {
+      console.log('Transaction receipt mined:', receipt);
+      // Any additional handling after the receipt is mined can be done here
+    })
+    .catch(function (error) {
+      console.error('Error occurred during transaction:', error);
+      // Handle the error if something went wrong with the transaction
+    });
+
+    // await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 2e6 })
 }
 
-async function init(rpc) {
-    console.log(`The RPC URL is ${rpc}`)
-    web3 = new Web3(rpc)
+async function init() {
     contractJson = require('./build/contracts/Mixer.json')
     PRIVATE_KEY = process.env.PRIVATE_KEY
     MIXER_ADDRESS = process.env.MIXER_ADDRESS
+    RPC = process.env.RPC
+    web3 = new Web3(RPC)
+    console.log(`The RPC URL is ${RPC}`)
     console.log(`The private key found is ${PRIVATE_KEY}`)
     if (PRIVATE_KEY) {
         const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY)
@@ -254,12 +333,10 @@ async function init(rpc) {
 
 async function main() {
     program
-      .option('-r, --rpc <URL>', 'The RPC, CLI should interact with', 'http://localhost:8545')
-    program
       .command('deposit')
       .description('Submit a 0.00000001 ETH deposit to the mixer and retrieve a note which can be used to get back the money later')
       .action(async () => {
-        await init(program.opts().rpc)
+        await init()
         noteString = await deposit()
         console.log(`Here is your note, please keep it safe so that you can withdraw later:\n${noteString}`)
       })
@@ -267,7 +344,7 @@ async function main() {
       .command('balance <address>')
       .description('Check ETH balance')
       .action(async (address) => {
-        await init(program.opts().rpc)
+        await init()
         await printETHBalance({ address, name: '' })
       })
     program
@@ -275,7 +352,7 @@ async function main() {
       .description('Withdraw a note to a recipient account')
       .action(async (noteString, recipient) => {
         const deposit = await parseNote(noteString)
-        await init(program.opts().rpc)
+        await init()
         await withdraw({ deposit, recipient })
       })
     program.parse(process.argv)

@@ -24,11 +24,14 @@
  * Create .env (which should be .gitignored) and declare your MNEMONIC
  * and Infura PROJECT_ID variables inside.
  * For example, your .env file will have the following structure:
- *
- * MNEMONIC = <Your 12 phrase mnemonic>
- * PROJECT_ID = <Your Infura project id>
- *
- * Deployment with Truffle Dashboard (Recommended for best security practice)
+ */
+require("dotenv").config();
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+
+ MNEMONIC = process.env.MNEMONIC
+ INFURA_API_KEY = process.env.RPC
+ /**
+ * </Your>* Deployment with Truffle Dashboard (Recommended for best security practice)
  * --------------------------------------------------------------------------
  *
  * Are you concerned about security and minimizing rekt status 🤔?
@@ -40,11 +43,6 @@
  *
  * https://trufflesuite.com/docs/truffle/getting-started/using-the-truffle-dashboard/
  */
-
-// require('dotenv').config();
-// const { MNEMONIC, PROJECT_ID } = process.env;
-
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
 
 module.exports = {
   /**
@@ -68,6 +66,13 @@ module.exports = {
      host: "127.0.0.1",     // Localhost (default: none)
      port: 8545,            // Standard Ethereum port (default: none)
      network_id: "*",       // Any network (default: none)
+    },
+    sepolia: {
+      provider: () => new HDWalletProvider(MNEMONIC, INFURA_API_KEY),
+      network_id: "11155111",
+      gas: 8000000,
+      networkCheckTimeout: 10000,
+      timeoutBlocks: 200
     },
     //
     // An additional network, but with some advanced options…

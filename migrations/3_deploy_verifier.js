@@ -1,7 +1,7 @@
-const PlonkVerifier = artifacts.require("PlonkVerifier");
+const FflonkVerifier = artifacts.require("FflonkVerifier");
 
 module.exports = function (deployer) {
     deployer.then(async () => {
-        await deployer.deploy(PlonkVerifier);
+        await deployer.deploy(FflonkVerifier);
     });
 };

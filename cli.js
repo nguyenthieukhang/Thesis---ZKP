@@ -96,8 +96,33 @@ async function deposit() {
       PRIVATE_KEY
     );
     web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
-    .on('transactionHash', (hash) => {
+    .once('sending', function (payload) {
+      console.log('Transaction sending:', payload);
+    })
+    .once('sent', function (payload) {
+      console.log('Transaction sent:', payload);
+    })
+    .once('transactionHash', function (hash) {
       console.log('Transaction hash:', hash);
+    })
+    .once('receipt', function (receipt) {
+      console.log('Transaction receipt:', receipt);
+    })
+    .on('confirmation', function (confNumber, receipt, latestBlockHash) {
+      console.log('Confirmation number:', confNumber);
+      console.log('Receipt:', receipt);
+      console.log('Latest block hash:', latestBlockHash);
+    })
+    .on('error', function (error) {
+      console.error('Error occurred:', error);
+    })
+    .then(function (receipt) {
+      console.log('Transaction receipt mined:', receipt);
+      // Any additional handling after the receipt is mined can be done here
+    })
+    .catch(function (error) {
+      console.error('Error occurred during transaction:', error);
+      // Handle the error if something went wrong with the transaction
     });
     // await tornado.methods.deposit(deposit.commitment).send({ value: ETH_AMOUNT, from: senderAccount, gas: 2e6 })
     // await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
@@ -238,9 +263,35 @@ async function withdraw({ deposit, recipient }) {
       PRIVATE_KEY
     );
     web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
-    .on('transactionHash', (hash) => {
+    .once('sending', function (payload) {
+      console.log('Transaction sending:', payload);
+    })
+    .once('sent', function (payload) {
+      console.log('Transaction sent:', payload);
+    })
+    .once('transactionHash', function (hash) {
       console.log('Transaction hash:', hash);
+    })
+    .once('receipt', function (receipt) {
+      console.log('Transaction receipt:', receipt);
+    })
+    .on('confirmation', function (confNumber, receipt, latestBlockHash) {
+      console.log('Confirmation number:', confNumber);
+      console.log('Receipt:', receipt);
+      console.log('Latest block hash:', latestBlockHash);
+    })
+    .on('error', function (error) {
+      console.error('Error occurred:', error);
+    })
+    .then(function (receipt) {
+      console.log('Transaction receipt mined:', receipt);
+      // Any additional handling after the receipt is mined can be done here
+    })
+    .catch(function (error) {
+      console.error('Error occurred during transaction:', error);
+      // Handle the error if something went wrong with the transaction
     });
+
     // await tornado.methods.withdraw(proofArr, ...args).send({ from: senderAccount, gas: 2e6 })
 }
 

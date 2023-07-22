@@ -218,7 +218,7 @@ async function generateProof({ deposit, recipient }) {
 
     console.log('Generating SNARK proof')
     console.time('Proof time')
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_final.zkey");
+    const { proof, publicSignals } = await snarkjs.fflonk.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_final.zkey");
     console.timeEnd('Proof time')
     // console.log("Proof: ");
     // console.log(JSON.stringify(proof, null, 1));
@@ -227,7 +227,7 @@ async function generateProof({ deposit, recipient }) {
 
     const vKey = JSON.parse(fs.readFileSync("./circuits/verification_key.json"));
 
-    const res = await snarkjs.plonk.verify(vKey, publicSignals, proof);
+    const res = await snarkjs.fflonk.verify(vKey, publicSignals, proof);
 
     if (res === true) {
         console.log("Offline verification OK");
@@ -241,21 +241,24 @@ async function generateProof({ deposit, recipient }) {
       recipient
     ]
 
-    proofArr = [proof.A[0], proof.A[1],
-              proof.B[0], proof.B[1],
-              proof.C[0], proof.C[1],
-              proof.Z[0], proof.Z[1],
-              proof.T1[0], proof.T1[1],
-              proof.T2[0], proof.T2[1],
-              proof.T3[0], proof.T3[1],
-              proof.Wxi[0], proof.Wxi[1],
-              proof.Wxiw[0], proof.Wxiw[1],
-              proof.eval_a,
-              proof.eval_b,
-              proof.eval_c,
-              proof.eval_s1,
-              proof.eval_s2,
-              proof.eval_zw,
+    console.log('The proof:')
+    console.log(proof)
+
+    proofArr = [proof.polynomials.C1[0], proof.polynomials.C1[1],
+              proof.polynomials.C2[0], proof.polynomials.C2[1],
+              proof.polynomials.W1[0], proof.polynomials.W1[1],
+              proof.polynomials.W2[0], proof.polynomials.W2[1],
+              proof.evaluations.ql, proof.evaluations.qr,
+              proof.evaluations.qm, proof.evaluations.qo,
+              proof.evaluations.qc, proof.evaluations.s1,
+              proof.evaluations.s2, proof.evaluations.s3,
+              proof.evaluations.a, proof.evaluations.b,
+              proof.evaluations.c,
+              proof.evaluations.z,
+              proof.evaluations.zw,
+              proof.evaluations.t1w,
+              proof.evaluations.t2w,
+              proof.evaluations.inv,
               publicSignals[0],
               publicSignals[1]]
 
@@ -266,7 +269,11 @@ async function withdraw({ deposit, recipient }) {
     const { proofArr, args } = await generateProof({ deposit, recipient })
     console.log('Submitting withdraw transaction')
     latestBlock = await web3.eth.getBlock("latest")
-    const transactionData = tornado.methods.withdraw(proofArr.slice(0, 24), proofArr.slice(24, 26), ...args).encodeABI();
+    function strToByteArray(str) {
+      return int2Buff(BigInt(str), 32)
+    }
+    proof = proofArr.slice(0, 24).map(strToByteArray)
+    const transactionData = tornado.methods.withdraw(proof, proofArr.slice(24, 26), ...args).encodeABI();
     const signedTransaction = await web3.eth.accounts.signTransaction(
       {
         from: senderAccount,

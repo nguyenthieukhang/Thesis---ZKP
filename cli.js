@@ -17,6 +17,11 @@ const F = new ffjavascript.ZqField(
     FIELD_SIZE_STRING
   )
 );
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const buildPedersenHash = circomlibjs.buildPedersenHash
 const buildBabyJub = circomlibjs.buildBabyjub
 const buildMimcSponge = circomlibjs.buildMimcSponge
@@ -31,10 +36,65 @@ let PRIVATE_KEY, MIXER_ADDRESS
 let pedersen = buildPedersenHash()
 let babyJub = buildBabyJub()
 let mimcSponge
+let currTimeStamp, currTxnHash, proofTime
 
 const buff2Int = buff => BigInt('0x' + buff.toString('hex'))
 
 const Arr2Int = arr => BigInt('0x' + Buffer.from(arr).toString('hex'))
+
+async function getTransactionReceipt(txHash) {
+  try {
+    const receipt = await web3.eth.getTransactionReceipt(txHash);
+    return receipt;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function getVerifierRunTime() {
+  console.log('\x1b[34m', 'Withdraw data')
+  while (true) {
+    const receipt = await getTransactionReceipt(currTxnHash);
+    // console.log(receipt)
+    if (receipt !== null) {
+      const gasUsed = receipt.gasUsed;
+      const transactionFee = receipt.effectiveGasPrice * gasUsed
+      blockNumber = receipt.blockNumber
+      const runtime = Date.now() - currTimeStamp;
+
+      console.log('\x1b[32m', 'Proof time:', proofTime, "milliseconds")
+      console.log('\x1b[32m', 'Smart Contract Runtime:', runtime, 'milliseconds');
+      console.log('\x1b[32m', 'Gas Used:', gasUsed);
+      console.log('\x1b[32m', 'Transaction Fee:', transactionFee, 'wei');
+
+      break; // Exit the loop when we get the results
+    }
+
+    await sleep(1000); // Sleep for 5 seconds and check again
+  }
+}
+
+async function getDepositRunTime() {
+  console.log('\x1b[34m', 'Deposit data')
+  while (true) {
+    const receipt = await getTransactionReceipt(currTxnHash);
+    // console.log(receipt)
+    if (receipt !== null) {
+      const runtime = (Date.now() - currTimeStamp);
+      const gasUsed = receipt.gasUsed;
+      const transactionFee = receipt.effectiveGasPrice * gasUsed
+
+      // console.log('\x1b[32m', 'Proof time:', proofTime, "milliseconds")
+      console.log('\x1b[32m', 'Smart Contract Runtime:', runtime, 'milliseconds');
+      console.log('\x1b[32m', 'Gas Used:', gasUsed);
+      console.log('\x1b[32m', 'Transaction Fee:', transactionFee, 'wei');
+
+      break; // Exit the loop when we get the results
+    }
+
+    await sleep(1000); // Sleep for 5 seconds and check again
+  }
+}
 
 function int2Buff(bigInt, bufferSize = BUFFER_SIZE) {
   const hexString = bigInt.toString(16).padStart(bufferSize * 2, "0");
@@ -77,11 +137,11 @@ async function deposit() {
     const deposit = await createDeposit({ nullifier: rBigInt(), secret: rBigInt() })
     const note = deposit.preimage.toString('hex').padStart(64, '0')
     const noteString = `Khang-and-Phu-0x${note}`
-    console.log(`Your note: ${noteString}`)
-    await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
-    await printETHBalance({ address: senderAccount, name: 'Sender account' })
+    // console.log(`Your note: ${noteString}`)
+    // await printETHBalance({ address: tornado._address, name: 'Khang and Phu' })
+    // await printETHBalance({ address: senderAccount, name: 'Sender account' })
     latestBlock = await web3.eth.getBlock("latest")
-    console.log('Submitting deposit transaction')
+    // console.log('Submitting deposit transaction')
     const transactionData = tornado.methods.deposit(deposit.commitment).encodeABI();
     const signedTransaction = await web3.eth.accounts.signTransaction(
       {
@@ -91,35 +151,38 @@ async function deposit() {
         data: transactionData,
         gas: 2e7,
         maxFeePerGas: BigInt(latestBlock.baseFeePerGas) * BigInt(2),
-        maxPriorityFeePerGas: 0
+        maxPriorityFeePerGas: 1
       },
       PRIVATE_KEY
     );
+    currTimeStamp = Date.now()
     web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
-    .once('sending', function (payload) {
-      console.log('Transaction sending:', payload);
+    // .once('sending', function (payload) {
+    //   console.log('Transaction sending:', payload);
+    // })
+    // .once('sent', function (payload) {
+    //   console.log('Transaction sent:', payload);
+    // })
+    .once('transactionHash', async function (hash) {
+      // console.log('Transaction hash:', hash);
+      currTxnHash = hash
+      await getDepositRunTime()
     })
-    .once('sent', function (payload) {
-      console.log('Transaction sent:', payload);
-    })
-    .once('transactionHash', function (hash) {
-      console.log('Transaction hash:', hash);
-    })
-    .once('receipt', function (receipt) {
-      console.log('Transaction receipt:', receipt);
-    })
-    .on('confirmation', function (confNumber, receipt, latestBlockHash) {
-      console.log('Confirmation number:', confNumber);
-      console.log('Receipt:', receipt);
-      console.log('Latest block hash:', latestBlockHash);
-    })
-    .on('error', function (error) {
-      console.error('Error occurred:', error);
-    })
-    .then(function (receipt) {
-      console.log('Transaction receipt mined:', receipt);
-      // Any additional handling after the receipt is mined can be done here
-    })
+    // .once('receipt', function (receipt) {
+    //   console.log('Transaction receipt:', receipt);
+    // })
+    // .on('confirmation', function (confNumber, receipt, latestBlockHash) {
+    //   console.log('Confirmation number:', confNumber);
+    //   console.log('Receipt:', receipt);
+    //   console.log('Latest block hash:', latestBlockHash);
+    // })
+    // .on('error', function (error) {
+    //   console.error('Error occurred:', error);
+    // })
+    // .then(function (receipt) {
+    //   console.log('Transaction receipt mined:', receipt);
+    //   // Any additional handling after the receipt is mined can be done here
+    // })
     .catch(function (error) {
       console.error('Error occurred during transaction:', error);
       // Handle the error if something went wrong with the transaction
@@ -150,7 +213,7 @@ async function parseNote(noteString) {
 
 async function generateMerkleProof(deposit) {
     // Get all deposit events from smart contract and assemble merkle tree from them
-    console.log('Getting current state from mixer contract')
+    // console.log('Getting current state from mixer contract')
     const events = await tornado.getPastEvents('LeafAdded', { fromBlock: 0, toBlock: 'latest' })
     const leaves = events
       .sort((a, b) => {
@@ -165,13 +228,13 @@ async function generateMerkleProof(deposit) {
       }) // Sort events in chronological order
       .map(e => e.returnValues.leaf)
     const tree = new merkleTree.MerkleTree(MERKLE_TREE_HEIGHT, leaves, {zeroElement: zero_value, hashFunction: hashLeftRight})
-    console.log('Leaves array:');
-    leaves.forEach((leaf, index) => {
-      console.log(`Leaf ${index + 1}: ${leaf}`);
-    });
+    // console.log('Leaves array:');
+    // leaves.forEach((leaf, index) => {
+    //   console.log(`Leaf ${index + 1}: ${leaf}`);
+    // });
 
     // Find current commitment in the tree
-    console.log(`The value we are looking for is ${deposit.commitment}`)
+    // console.log(`The value we are looking for is ${deposit.commitment}`)
     const depositEvent = events.find(e => e.returnValues.leaf === deposit.commitment)
     const leafIndex = depositEvent ? Number(depositEvent.returnValues.leaf_index) : -1
 
@@ -216,10 +279,12 @@ async function generateProof({ deposit, recipient }) {
       pathIndices: pathIndices,
     }
 
-    console.log('Generating SNARK proof')
+    // console.log('Generating SNARK proof')
+    start = Date.now()
     console.time('Proof time')
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, "./circuits/WithDraw_js/WithDraw.wasm", "./circuits/WithDraw_final.zkey");
     console.timeEnd('Proof time')
+    proofTime = Date.now() - start
     // console.log("Proof: ");
     // console.log(JSON.stringify(proof, null, 1));
     // console.log('Public signals:')
@@ -264,7 +329,7 @@ async function generateProof({ deposit, recipient }) {
 
 async function withdraw({ deposit, recipient }) {
     const { proofArr, args } = await generateProof({ deposit, recipient })
-    console.log('Submitting withdraw transaction')
+    // console.log('Submitting withdraw transaction')
     latestBlock = await web3.eth.getBlock("latest")
     const transactionData = tornado.methods.withdraw(proofArr.slice(0, 24), proofArr.slice(24, 26), ...args).encodeABI();
     const signedTransaction = await web3.eth.accounts.signTransaction(
@@ -274,35 +339,38 @@ async function withdraw({ deposit, recipient }) {
         data: transactionData,
         gas: 2e7,
         maxFeePerGas: BigInt(latestBlock.baseFeePerGas) * BigInt(2),
-        maxPriorityFeePerGas: 0
+        maxPriorityFeePerGas: 1
       },
       PRIVATE_KEY
     );
+    currTimeStamp = Date.now();
     web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
-    .once('sending', function (payload) {
-      console.log('Transaction sending:', payload);
-    })
-    .once('sent', function (payload) {
-      console.log('Transaction sent:', payload);
-    })
-    .once('transactionHash', function (hash) {
+    // .once('sending', function (payload) {
+    //   console.log('Transaction sending:', payload);
+    // })
+    // .once('sent', function (payload) {
+    //   console.log('Transaction sent:', payload);
+    // })
+    .once('transactionHash', async function (hash) {
       console.log('Transaction hash:', hash);
+      currTxnHash = hash
+      await getVerifierRunTime()
     })
-    .once('receipt', function (receipt) {
-      console.log('Transaction receipt:', receipt);
-    })
-    .on('confirmation', function (confNumber, receipt, latestBlockHash) {
-      console.log('Confirmation number:', confNumber);
-      console.log('Receipt:', receipt);
-      console.log('Latest block hash:', latestBlockHash);
-    })
-    .on('error', function (error) {
-      console.error('Error occurred:', error);
-    })
-    .then(function (receipt) {
-      console.log('Transaction receipt mined:', receipt);
-      // Any additional handling after the receipt is mined can be done here
-    })
+    // .once('receipt', function (receipt) {
+    //   console.log('Transaction receipt:', receipt);
+    // })
+    // .on('confirmation', function (confNumber, receipt, latestBlockHash) {
+    //   console.log('Confirmation number:', confNumber);
+    //   console.log('Receipt:', receipt);
+    //   console.log('Latest block hash:', latestBlockHash);
+    // })
+    // .on('error', function (error) {
+    //   console.error('Error occurred:', error);
+    // })
+    // .then(function (receipt) {
+    //   console.log('Transaction receipt mined:', receipt);
+    //   // Any additional handling after the receipt is mined can be done here
+    // })
     .catch(function (error) {
       console.error('Error occurred during transaction:', error);
       // Handle the error if something went wrong with the transaction
@@ -317,8 +385,8 @@ async function init() {
     MIXER_ADDRESS = process.env.MIXER_ADDRESS
     RPC = process.env.RPC
     web3 = new Web3(RPC)
-    console.log(`The RPC URL is ${RPC}`)
-    console.log(`The private key found is ${PRIVATE_KEY}`)
+    // console.log(`The RPC URL is ${RPC}`)
+    // console.log(`The private key found is ${PRIVATE_KEY}`)
     if (PRIVATE_KEY) {
         const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY)
         web3.eth.accounts.wallet.add(PRIVATE_KEY)
